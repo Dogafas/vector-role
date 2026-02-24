@@ -1,0 +1,33 @@
+---
+- name: Create extraction directory
+  file:
+    path: "/opt/vector"
+    state: directory
+    mode: "0755"
+
+- name: Download and Extract Vector
+  unarchive:
+    src: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-gnu.tar.gz"
+    dest: "/opt/vector"
+    remote_src: yes
+    extra_opts: [--strip-components=2]
+
+- name: Move Vector binary to bin
+  copy:
+    src: "/opt/vector/bin/vector"
+    dest: "/usr/local/bin/vector"
+    mode: "0755"
+    remote_src: true
+
+- name: Create Vector systemd unit
+  template:
+    src: vector.service.j2
+    dest: /etc/systemd/system/vector.service
+    mode: "0644"
+  notify: Restart vector
+
+- name: Enable and start Vector
+  systemd:
+    name: vector
+    state: started
+    enabled: true
