@@ -1,0 +1,16 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Install Python on Ubuntu/Debian
+      raw: |
+        apt-get update -y && apt-get install -y python3
+      when: "'ubuntu' in inventory_hostname"
+
+    - name: Install Python on OracleLinux/RedHat
+      raw: |
+        yum install -y python39
+        alternatives --set python /usr/bin/python3.9 || true
+      when: "'oraclelinux' in inventory_hostname"

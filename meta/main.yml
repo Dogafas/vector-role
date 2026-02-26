@@ -1,12 +1,11 @@
 ---
 galaxy_info:
+  namespace: dogafas
+  role_name: vector_role
   author: Dogafas
-  description: Install and configure Vector
+  description: Vector role
   license: MIT
-  min_ansible_version: 2.9
-  platforms:
-    - name: Ubuntu
-      versions:
-        - all
+  min_ansible_version: "2.12"
 
 dependencies: []
+
