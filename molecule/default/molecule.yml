@@ -1,47 +1,26 @@
 ---
 dependency:
   name: galaxy
-
 driver:
   name: docker
-
 platforms:
   - name: ubuntu
     image: ubuntu:latest
+    command: /sbin/init
     privileged: true
-    pre_build_image: true
-
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
   - name: oraclelinux
     image: oraclelinux:8
+    command: /usr/lib/systemd/systemd
     privileged: true
-    pre_build_image: true
-
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
 provisioner:
   name: ansible
-  config_options:
-    defaults:
-      host_key_checking: false
-      timeout: 30
   playbooks:
-    converge: converge.yml
-    prepare: prepare.yml
-    destroy: destroy.yml
-    verify: verify.yml
-
+    converge: ${MOLECULE_PLAYBOOK_DIR:-../../molecule/default}/converge.yml
+    prepare: ${MOLECULE_PLAYBOOK_DIR:-../../molecule/default}/prepare.yml
+    verify: ${MOLECULE_PLAYBOOK_DIR:-../../molecule/default}/verify.yml
 verifier:
   name: ansible
-
-scenario:
-  name: default
-  test_sequence:
-    - dependency
-    - cleanup
-    - destroy
-    - syntax
-    - create
-    - prepare
-    - converge
-    - idempotence
-    - verify
-    - cleanup
-    - destroy

@@ -5,12 +5,24 @@
     state: directory
     mode: "0755"
 
-- name: Download and Extract Vector
+- name: Download Vector archive
+  get_url:
+    url: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-gnu.tar.gz"
+    dest: "/tmp/vector-{{ vector_version }}.tar.gz"
+    timeout: 60
+    validate_certs: yes
+  register: download_result
+  retries: 3
+  delay: 5
+  until: download_result is not failed
+
+- name: Extract Vector archive
   unarchive:
-    src: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-gnu.tar.gz"
+    src: "/tmp/vector-{{ vector_version }}.tar.gz"
     dest: "/opt/vector"
     remote_src: yes
     extra_opts: [--strip-components=2]
+  when: download_result is changed
 
 - name: Move Vector binary to bin
   copy:

@@ -1,3 +1,69 @@
+# ---
+# - name: Prepare
+#   hosts: all
+#   gather_facts: false
+
+#   tasks:
+#     - name: Install Python on Ubuntu/Debian
+#       raw: |
+#         apt-get update -y && apt-get install -y python3
+#       when: "'ubuntu' in inventory_hostname"
+
+#     - name: Install Python on OracleLinux/RedHat
+#       raw: |
+#         yum install -y python39
+#         alternatives --set python /usr/bin/python3.9 || true
+#       when: "'oraclelinux' in inventory_hostname"
+
+#     - name: Install dependencies
+#       package:
+#         name:
+#           - curl
+#           - tar
+#           - gzip
+#         state: present
+
+
+# ---
+# - name: Prepare
+#   hosts: all
+#   gather_facts: false
+
+#   tasks:
+#     - name: Install Python on Ubuntu/Debian
+#       raw: |
+#         apt-get update -y && apt-get install -y python3 python3-apt sudo
+#       when: "'ubuntu' in inventory_hostname"
+#       changed_when: false
+
+#     - name: Install Python and DNF module on OracleLinux/RedHat
+#       raw: |
+#         # Устанавливаем Python и DNF модуль
+#         yum install -y python39 python3-dnf sudo
+#         # Создаем симлинк для python3
+#         alternatives --set python /usr/bin/python3.9 || alternatives --set python3 /usr/bin/python3.9
+#         # Проверяем что dnf модуль доступен
+#         python3.9 -c "import dnf" 2>/dev/null || echo "DNF module installed"
+#       when: "'oraclelinux' in inventory_hostname"
+#       changed_when: false
+#       register: oracle_python_install
+
+#     - name: Wait for system to settle (OracleLinux)
+#       pause:
+#         seconds: 5
+#       when: 
+#         - "'oraclelinux' in inventory_hostname"
+#         - oracle_python_install is changed
+
+#     - name: Install dependencies
+#       package:
+#         name:
+#           - curl
+#           - tar
+#           - gzip
+#         state: present
+#       become: true
+
 ---
 - name: Prepare
   hosts: all
@@ -6,11 +72,17 @@
   tasks:
     - name: Install Python on Ubuntu/Debian
       raw: |
-        apt-get update -y && apt-get install -y python3
+        apt-get update -y && apt-get install -y python3 python3-apt sudo
+        apt-get install -y curl tar gzip
       when: "'ubuntu' in inventory_hostname"
+      changed_when: false
 
-    - name: Install Python on OracleLinux/RedHat
+    - name: Install Python and dependencies on OracleLinux/RedHat
       raw: |
-        yum install -y python39
-        alternatives --set python /usr/bin/python3.9 || true
+        yum install -y python39 python3-dnf sudo curl tar gzip
+        alternatives --set python /usr/bin/python3.9 2>/dev/null || alternatives --set python3 /usr/bin/python3.9 2>/dev/null
       when: "'oraclelinux' in inventory_hostname"
+      changed_when: false
+
+    - name: Gather facts after Python installation
+      setup:

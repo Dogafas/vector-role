@@ -2,7 +2,7 @@ data_dir: "{{ vector_data_dir | default('/var/lib/vector') }}"
 
 sources:
   journal_logs:
-    type: journald 
+    type: journald
 
 sinks:
   console:
@@ -11,11 +11,3 @@ sinks:
       - journal_logs
     encoding:
       codec: json
-
-  # Задел на будущее: отправка в ClickHouse
-  # clickhouse_output:
-  #   type: clickhouse
-  #   inputs:
-  #     - journal_logs
-  #   endpoint: "http://{{ hostvars['clickhouse-01']['ansible_host'] }}:8123"
-  #   database: "logs"
