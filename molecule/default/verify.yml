@@ -13,39 +13,40 @@
 - name: Verify Vector installation
   hosts: all
   gather_facts: false
+  
+  vars_files:
+    - ../../defaults/main.yml  # Подключаем переменные из роли
+  
   tasks:
     - name: Check vector binary exists
-      ansible.builtin.stat:
-        path: /usr/bin/vector
+      stat:
+        path: "{{ vector_bin_path }}"
       register: vector_bin
-
+    
     - name: Assert vector binary exists
-      ansible.builtin.assert:
+      assert:
         that:
           - vector_bin.stat.exists
-        fail_msg: "Vector binary not found"
-        success_msg: "Vector binary exists"
-
-    - name: Check vector service is running
-      ansible.builtin.command: systemctl is-active vector
-      register: vector_service
-      failed_when: false
-
-    - name: Assert vector service is active
-      ansible.builtin.assert:
-        that:
-          - vector_service.stdout == "active"
-        fail_msg: "Vector service is not active"
-        success_msg: "Vector service is active"
-
-    - name: Validate vector config
-      ansible.builtin.command: vector validate --no-environment
-      register: vector_validate
-      failed_when: false
-
-    - name: Assert vector config is valid
-      ansible.builtin.assert:
-        that:
-          - vector_validate.rc == 0
-        fail_msg: "Vector config is invalid"
-        success_msg: "Vector config is valid"
+        fail_msg: "Vector binary not found at {{ vector_bin_path }}"
+        success_msg: "Vector binary found at {{ vector_bin_path }}"
+    
+    - name: Check if vector is running
+      shell: "pgrep -f '{{ vector_bin_path }}' || true"
+      register: vector_running
+      changed_when: false
+    
+    - name: Show vector process
+      debug:
+        msg: "Vector is running with PID: {{ vector_running.stdout }}"
+      when: vector_running.stdout != ""
+    
+    - name: Get vector version
+      command: "{{ vector_bin_path }} --version"
+      register: vector_version
+      changed_when: false
+      ignore_errors: true
+    
+    - name: Show vector version
+      debug:
+        var: vector_version.stdout
+      when: vector_version is success

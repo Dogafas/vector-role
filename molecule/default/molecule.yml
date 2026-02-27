@@ -18,6 +18,13 @@ platforms:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
 provisioner:
   name: ansible
+  inventory:
+    group_vars:
+      all:
+        molecule_test: true
+        ansible_become: false
+        ansible_become_method: sudo
+        ansible_become_user: root
   playbooks:
     converge: ${MOLECULE_PLAYBOOK_DIR:-../../molecule/default}/converge.yml
     prepare: ${MOLECULE_PLAYBOOK_DIR:-../../molecule/default}/prepare.yml
