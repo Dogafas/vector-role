@@ -1,14 +1,30 @@
 ---
+# Версия Vector
 vector_version: "0.30.0"
 
-# Формирование URL на основе версии
+# URL архива Vector
 vector_archive_url: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-gnu.tar.gz"
 
-# Пути для работы роли
-vector_archive_path: "/tmp/vector.tar.gz"
-vector_extract_path: "/opt/vector"
+# Куда скачивать архив
+vector_archive_path: "/tmp/vector-{{ vector_version }}.tar.gz"
+
+# Куда распаковывать архив
+vector_install_dir: "/opt/vector"
+
+# Имя каталога внутри архива (Vector всегда кладёт так)
+vector_extracted_dir: "{{ vector_install_dir }}/vector-x86_64-unknown-linux-gnu"
+
+# Путь к бинарнику внутри распакованного архива
+vector_extracted_bin: "{{ vector_extracted_dir }}/bin/vector"
+
+# Куда устанавливать бинарник
 vector_bin_path: "/usr/local/bin/vector"
 
-# Путь к конфигу (для шаблона vector.yml.j2)
+# Каталог конфигурации Vector
 vector_config_dir: "/etc/vector"
+
+# Путь к основному конфигу
+vector_config_path: "{{ vector_config_dir }}/vector.yml"
+
+# Каталог data_dir, который требует Vector
 vector_data_dir: "/var/lib/vector"

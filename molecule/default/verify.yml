@@ -1,52 +1,72 @@
-# ---
-# # Purpose: assert that the instance really ended up in the expected state.
-# # Molecule calls this playbook with `molecule verify`.
-# - name: Verify
-#   hosts: instance
-#   gather_facts: false # Quicker, if you do not need facts
-#   tasks:
-#     - name: Assert something
-#       ansible.builtin.assert:
-#         that: true
-
----
 - name: Verify Vector installation
   hosts: all
   gather_facts: false
-  
+
   vars_files:
-    - ../../defaults/main.yml  # Подключаем переменные из роли
-  
+    - ../../defaults/main.yml
+
   tasks:
     - name: Check vector binary exists
       stat:
         path: "{{ vector_bin_path }}"
       register: vector_bin
-    
+
     - name: Assert vector binary exists
       assert:
         that:
           - vector_bin.stat.exists
-        fail_msg: "Vector binary not found at {{ vector_bin_path }}"
-        success_msg: "Vector binary found at {{ vector_bin_path }}"
-    
+          - vector_bin.stat.executable
+        fail_msg: "Vector binary not found or not executable at {{ vector_bin_path }}"
+        success_msg: "Vector binary found and executable at {{ vector_bin_path }}"
+
+    - name: Check vector config exists
+      stat:
+        path: "{{ vector_config_path }}"
+      register: vector_cfg
+
+    - name: Assert vector config exists and not empty
+      assert:
+        that:
+          - vector_cfg.stat.exists
+          - vector_cfg.stat.size > 0
+        fail_msg: "Vector config missing or empty at {{ vector_config_path }}"
+        success_msg: "Vector config exists and is not empty"
+
+    - name: Validate vector config
+      command: "{{ vector_bin_path }} validate --config-yaml {{ vector_config_path }}"
+      register: vector_validate
+      changed_when: false
+      ignore_errors: true
+
+    - name: Assert vector config is valid
+      assert:
+        that:
+          - vector_validate.rc == 0
+        fail_msg: "Vector config validation failed: {{ vector_validate.stderr | default(vector_validate.stdout | default('no output')) }}"
+        success_msg: "Vector config is valid"
+
     - name: Check if vector is running
       shell: "pgrep -f '{{ vector_bin_path }}' || true"
       register: vector_running
       changed_when: false
-    
-    - name: Show vector process
-      debug:
-        msg: "Vector is running with PID: {{ vector_running.stdout }}"
-      when: vector_running.stdout != ""
-    
+
+    - name: Assert vector is running
+      assert:
+        that:
+          - vector_running.stdout | length > 0
+        fail_msg: "Vector process is not running"
+        success_msg: "Vector process is running with PID: {{ vector_running.stdout }}"
+
     - name: Get vector version
       command: "{{ vector_bin_path }} --version"
       register: vector_version
       changed_when: false
       ignore_errors: true
-    
-    - name: Show vector version
-      debug:
-        var: vector_version.stdout
-      when: vector_version is success
+
+    - name: Assert vector version is correct
+      assert:
+        that:
+          - vector_version.rc == 0
+          - "'vector' in vector_version.stdout"
+        fail_msg: "Failed to get vector version or output invalid"
+        success_msg: "Vector version OK: {{ vector_version.stdout }}"

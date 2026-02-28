@@ -1,14 +1,24 @@
 ---
+# Создание каталогов для установки и данных Vector
 - name: Create extraction directory
   file:
-    path: "/opt/vector"
+    path: "{{ vector_install_dir }}"
     state: directory
     mode: "0755"
 
+- name: Create Vector data directory
+  file:
+    path: "{{ vector_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Скачивание архива Vector
 - name: Download Vector archive
   get_url:
-    url: "https://github.com/vectordotdev/vector/releases/download/v{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-gnu.tar.gz"
-    dest: "/tmp/vector-{{ vector_version }}.tar.gz"
+    url: "{{ vector_archive_url }}"
+    dest: "{{ vector_archive_path }}"
     timeout: 60
     validate_certs: yes
   register: download_result
@@ -16,21 +26,27 @@
   delay: 5
   until: download_result is not failed
 
+# Распаковка архива Vector
 - name: Extract Vector archive
   unarchive:
-    src: "/tmp/vector-{{ vector_version }}.tar.gz"
-    dest: "/opt/vector"
+    src: "{{ vector_archive_path }}"
+    dest: "{{ vector_install_dir }}"
     remote_src: yes
-    extra_opts: [--strip-components=2]
-  when: download_result is changed
 
+# Установка бинарника Vector
 - name: Move Vector binary to bin
   copy:
-    src: "/opt/vector/bin/vector"
+    src: "{{ vector_extracted_bin }}"
     dest: "{{ vector_bin_path }}"
     mode: "0755"
     remote_src: true
 
+- name: Ensure vector binary is executable
+  file:
+    path: "{{ vector_bin_path }}"
+    mode: "0755"
+
+# Конфигурация Vector
 - name: Create Vector config directory
   file:
     path: "{{ vector_config_dir }}"
@@ -40,10 +56,10 @@
 - name: Deploy Vector config
   template:
     src: vector.yml.j2
-    dest: "{{ vector_config_dir }}/vector.yml"
+    dest: "{{ vector_config_path }}"
     mode: "0644"
 
-# Блок для systemd (только не в тестовом окружении)
+# Systemd — только вне Molecule
 - name: Setup systemd service (for production environments)
   block:
     - name: Create Vector systemd unit
@@ -64,7 +80,7 @@
   when: not molecule_test | default(false)
   become: true
 
-# Запуск Vector напрямую в тестовом окружении (идемпотентная версия)
+# Запуск Vector напрямую в Molecule
 - name: Check if Vector is already running
   shell: "pgrep -f '{{ vector_bin_path }}' || true"
   register: vector_pid
@@ -72,10 +88,10 @@
   when: molecule_test | default(false)
 
 - name: Run Vector directly in test environment (if not running)
-  command: "{{ vector_bin_path }} --config {{ vector_config_dir }}/vector.yml"
+  command: "{{ vector_bin_path }} --config {{ vector_config_path }}"
   async: 3600
   poll: 0
-  when: 
+  when:
     - molecule_test | default(false)
     - vector_pid.stdout == ""
   changed_when: true
@@ -83,11 +99,11 @@
 - name: Debug - Show Vector status
   debug:
     msg: "Vector already running with PID: {{ vector_pid.stdout }}"
-  when: 
+  when:
     - molecule_test | default(false)
     - vector_pid.stdout != ""
 
-# Отладочная задача (опционально)
+# Отладка (опционально)
 - name: Debug - Show Vector process status
   shell: "ps aux | grep vector || true"
   register: vector_status
