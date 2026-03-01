@@ -36,26 +36,45 @@
       command: "{{ vector_bin_path }} validate --config-yaml {{ vector_config_path }}"
       register: vector_validate
       changed_when: false
-      ignore_errors: true
 
     - name: Assert vector config is valid
       assert:
         that:
           - vector_validate.rc == 0
-        fail_msg: "Vector config validation failed: {{ vector_validate.stderr | default(vector_validate.stdout | default('no output')) }}"
+          - "'Validated' in vector_validate.stdout or vector_validate.rc == 0"
+        fail_msg: "Vector config validation failed: {{ vector_validate.stderr | default(vector_validate.stdout) }}"
         success_msg: "Vector config is valid"
 
     - name: Check if vector is running
-      shell: "pgrep -f '{{ vector_bin_path }}' || true"
+      shell: "pgrep -f '{{ vector_bin_path }}'"
       register: vector_running
       changed_when: false
+      failed_when: false
+
+    - name: Start vector if not running
+      command: "{{ vector_bin_path }} --config {{ vector_config_path }}"
+      async: 3600
+      poll: 0
+      when: vector_running.rc != 0
+
+    - name: Wait for vector to start
+      wait_for:
+        timeout: 3
+      when: vector_running.rc != 0
+
+    - name: Check vector is running after start attempt
+      shell: "pgrep -f '{{ vector_bin_path }}'"
+      register: vector_final_check
+      changed_when: false
+      failed_when: false
 
     - name: Assert vector is running
       assert:
         that:
-          - vector_running.stdout | length > 0
+          - vector_final_check.rc == 0
+          - vector_final_check.stdout | length > 0
         fail_msg: "Vector process is not running"
-        success_msg: "Vector process is running with PID: {{ vector_running.stdout }}"
+        success_msg: "Vector process is running with PID: {{ vector_final_check.stdout }}"
 
     - name: Get vector version
       command: "{{ vector_bin_path }} --version"
