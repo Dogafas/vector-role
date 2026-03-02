@@ -1,0 +1,12 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Update apt cache
+      raw: apt-get update
+      changed_when: false
+
+    - name: Install Python 3
+      raw: apt-get install -y python3
+      changed_when: false
